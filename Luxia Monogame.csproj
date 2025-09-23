@@ -7,13 +7,14 @@
     <Authors>Demigod122111</Authors>
     <Description>A framework for MonoGame made to make building games with MonoGame easier.</Description>
     <Copyright>Copyright (c) 2025 Demigod122111</Copyright>
-    <PackageOutputPath>\package</PackageOutputPath>
+    <PackageOutputPath>package</PackageOutputPath>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <PackageIcon>Icon.png</PackageIcon>
     <RepositoryUrl>https://github.com/Demigod122111/Luxia-Monogame</RepositoryUrl>
     <Nullable>disable</Nullable>
-    <PackageId>MonoGame.Luxia</PackageId>
+    <PackageId>Demigod122111.Luxia</PackageId>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DebugType>embedded</DebugType>
@@ -33,6 +34,10 @@
       <PackagePath>\</PackagePath>
     </None>
     <None Update="LICENSE.txt">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Update="README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
