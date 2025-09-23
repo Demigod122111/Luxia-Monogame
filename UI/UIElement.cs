@@ -26,6 +26,17 @@ public abstract class UIElement
     Vector2 localPosition = Vector2.Zero;
 
     public Vector2 Size = new(100, 100);
+
+    public Rectangle BoundsRect => new Rectangle(
+        (int)Position.X, (int)Position.Y,
+        (int)Size.X, (int)Size.Y
+    );
+
+    public Rectangle EffectiveClipRect =>
+        ClipRect == Rectangle.Empty ? BoundsRect : ClipRect;
+
+
+    public Rectangle ClipRect = Rectangle.Empty;
     /// <summary>
     /// For mouse detection only
     /// </summary>
@@ -44,8 +55,7 @@ public abstract class UIElement
         if (!Input.IsMouseWithinFrame)
             return false;
 
-        return point.X >= Position.X && point.Y >= Position.Y &&
-               point.X <= Position.X + Size.X && point.Y <= Position.Y + Size.Y;
+        return EffectiveClipRect.Contains(point);
     }
 
     public bool IsTopMostAt(Point point, bool eventOnly = false)
@@ -74,7 +84,23 @@ public abstract class UIElement
         return false;
     }
 
+    public bool IsParentOf(UIElement element) => element.IsChildOf(this);
+    public bool IsChildOf(UIElement element)
+    {
+        var parent = Parent;
+
+        while (parent?.Parent != null)
+        {
+            if (parent.Parent == element)
+                return true;
+            parent = parent.Parent;
+        }
+
+        return parent == element;
+    }
+
     public bool EventPoint(Point point) => ContainsPoint(point) && IsTopMostAt(point, true);
+    public bool EventPassthroughPoint(Point point) => ContainsPoint(point) && (IsTopMostAt(point, false) || (UIManager.GetTopMostAt(point, false)?.IsChildOf(this) ?? true));
 
     public void AddChild(UIElement child)
     {

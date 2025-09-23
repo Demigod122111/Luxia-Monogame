@@ -13,7 +13,7 @@
     <PackageIcon>Icon.png</PackageIcon>
     <RepositoryUrl>https://github.com/Demigod122111/Luxia-Monogame</RepositoryUrl>
     <Nullable>disable</Nullable>
-    <PackageId>Demigod122111.Luxia</PackageId>
+    <PackageId>Luxia</PackageId>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

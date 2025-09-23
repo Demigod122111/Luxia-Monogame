@@ -62,7 +62,7 @@ public class ScrollView : UIElement
         AcceptEvents = false;
     }
 
-    Queue<Tuple<UIElement, bool>> savedVisible = new();
+    Queue<Tuple<UIElement, bool, Rectangle>> savedVisible = new();
 
     private void ApplyClipping(UIElement element, Rectangle viewRect)
     {
@@ -87,8 +87,9 @@ public class ScrollView : UIElement
             ExpandBoundsRecursive(element, ref minX, ref minY, ref maxX, ref maxY);
             var elemRect = new Rectangle((int)minX, (int)minY, (int)(maxX - minX), (int)(maxY - minY));
             // Leaf element -> clip
-            savedVisible.Enqueue(new(element, element.IsVisibleSelf));
+            savedVisible.Enqueue(new(element, element.IsVisibleSelf, element.ClipRect));
             element.IsVisibleSelf = viewRect.Intersects(elemRect);
+            element.ClipRect = Rectangle.Intersect(viewRect, element.BoundsRect);
         }
     }
 
@@ -98,6 +99,7 @@ public class ScrollView : UIElement
         {
             var item = savedVisible.Dequeue();
             item.Item1.IsVisibleSelf = item.Item2;
+            item.Item1.ClipRect = item.Item3;
         }
     }
 
@@ -109,14 +111,14 @@ public class ScrollView : UIElement
         Point mouse = IsWorldUI ? camera.ScreenToWorld(new(trueMouse.X, trueMouse.Y)).ToPoint() : trueMouse;
 
         // Mouse wheel scroll
-        if (ContainsPoint(mouse))
+        if (EventPassthroughPoint(mouse))
         {
             var wheel = Input.MouseWheelDelta;
             if (wheel.Y != 0 && HasVerticalScroll)
                 velocity.Y -= wheel.Y * 0.25f;
 
             if (wheel.X != 0 && HasHorizontalScroll)
-                velocity.X -= wheel.X * 0.25f;
+                velocity.X += wheel.X * 0.25f;
 
             // Drag scroll
             if (!isDragging && Input.IsMousePressed(MouseButton.Left))
@@ -189,14 +191,14 @@ public class ScrollView : UIElement
             velocity = new(velocity.X, 0);
         }
 
-        var viewRect = new Rectangle((int)Position.X, (int)Position.Y, (int)ContentSize.X, (int)ContentSize.Y);
+        var viewRect = new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y);
         // Update children
         foreach (var child in Children)
         {
             var savedPos = child.Position;
 
             // Shift position just like Render does
-            child.Position = savedPos - new Vector2(0, ScrollOffset.Y);
+            child.Position = savedPos - new Vector2(ScrollOffset.X, ScrollOffset.Y);
             child.UIManager = UIManager;
             ApplyClipping(child, viewRect);
             child.Update(camera);
@@ -218,13 +220,13 @@ public class ScrollView : UIElement
         Application.SpriteBatch.PushBegin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp,
             null, new RasterizerState() { ScissorTestEnable = true });
         Application.GraphicsDevice.ScissorRectangle = rect;
-        var viewRect = new Rectangle((int)Position.X, (int)Position.Y, (int)ContentSize.X, (int)ContentSize.Y);
+        var viewRect = new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y);
 
         // Render children with offset
         foreach (var child in Children)
         {
             var savedPos = child.Position;
-            child.Position = savedPos - new Vector2(0, ScrollOffset.Y);
+            child.Position = savedPos - new Vector2(ScrollOffset.X, ScrollOffset.Y);
             child.UIManager = UIManager;
             ApplyClipping(child, viewRect);
             child.Render(camera);
