@@ -19,7 +19,7 @@ public class UIManager
             // Use a HashSet to keep uniqueness
             var set = new HashSet<UIElement>(elements);
 
-            foreach (var e in immediateElements)
+            foreach (var e in immediateElementsRendered)
                 set.Add(e);
 
             return [..set];
@@ -45,19 +45,26 @@ public class UIManager
                 }
             }
 
-            foreach (var e in elements)
-                add(e);
-
-            foreach (var e in immediateElements)
+            foreach (var e in RootElements)
                 add(e);
 
             return [.. set];
         }
     }
 
-    private readonly List<UIElement> immediateElements = new();
-    private readonly Queue<UIElement> immediateElementsUpdate = new();
-    private readonly Queue<UIElement> immediateElementsRender = new();
+    private IEnumerable<UIElement> OrderElementsForRender(IEnumerable<UIElement> elements)
+    {
+        var elementsL = elements.ToList();
+        return elementsL
+            .Where(e => e.IsVisible)
+            .OrderBy(e => e.RenderLayer)
+            .ThenBy(e => e.RenderOrder)
+            .ThenBy(e => elementsL.IndexOf(e));
+    }
+
+    private readonly Queue<UIElement> immediateElementsToRender = new();
+    private readonly List<UIElement> immediateElementsRendered = new();
+    private readonly Queue<AdditionalRender> nextFrameAdditionalRender = new();
 
     static Camera2D defaultCamera
     {
@@ -80,9 +87,7 @@ public class UIManager
         setup?.Invoke(element);
         element.UIManager = this;
 
-        immediateElementsUpdate.Enqueue(element);
-        immediateElementsRender.Enqueue(element);
-        immediateElements.Add(element);
+        immediateElementsToRender.Enqueue(element);
     }
 
     public void AddElement(UIElement element)
@@ -97,6 +102,8 @@ public class UIManager
         element.UIManager = null;
     }
 
+    public void SendAdditionalRender(AdditionalRender additionalRender) => nextFrameAdditionalRender.Enqueue(additionalRender);
+
     public void Update(Camera2D? camera)
     {
         for (int i = 0; i < elements.Count; i++)
@@ -104,36 +111,67 @@ public class UIManager
             elements[i].UIManager = this;
             elements[i].Update(camera ?? defaultCamera);
         }
-
-        while (immediateElementsUpdate.Count > 0)
-        {
-            var element = immediateElementsUpdate.Dequeue();
-            element.UIManager = this;
-            element.Update(camera ?? defaultCamera);
-        }
-
-        immediateElements.RemoveAll(x => !immediateElementsRender.Contains(x) && !immediateElementsUpdate.Contains(x));
     }
 
-    public void Render(Camera2D? camera)
+    public void Render(Camera2D? camera, List<AdditionalRender> additionalRenders=null)
     {
-        for (int i = 0; i < elements.Count; i++)
+        additionalRenders ??= new();
+
+        var cam = camera ?? defaultCamera;
+        var elements = new HashSet<dynamic>(this.elements);
+
+        var immediateElements = new List<UIElement>();
+
+        foreach (var item in additionalRenders)
         {
-            elements[i].Render(camera ?? defaultCamera);
+            elements.Add(item);
         }
 
-        int requeueCount = 0;
-        while (immediateElementsRender.Count - requeueCount > 0)
+        while (nextFrameAdditionalRender.Count > 0)
         {
-            var item = immediateElementsRender.Dequeue();
-            if (immediateElementsUpdate.Contains(item))
+            elements.Add(nextFrameAdditionalRender.Dequeue());
+        }
+
+        while (immediateElementsToRender.Count > 0)
+        {
+            var item = immediateElementsToRender.Dequeue();
+            elements.Add(item);
+            immediateElements.Add(item);
+        }
+
+        immediateElementsRendered.Clear();
+        immediateElementsRendered.AddRange(immediateElements);
+
+        var ordered = elements
+            .Where(e => e is UIElement ue ? ue.IsVisible : true)
+            .Select((e, idx) => new { obj = e, idx })
+            .OrderBy(x =>
             {
-                immediateElementsRender.Enqueue(item);
-                requeueCount++;
+                if (x.obj is UIElement ue)
+                    return (ue.RenderLayer, ue.RenderOrder, x.idx);
+                else if (x.obj is AdditionalRender ar)
+                    return (ar.RenderLayer, ar.RenderOrder, x.idx);
+                else
+                    return (0, 0, x.idx);
+            })
+            .Select(x => x.obj);
+
+        // Finally render in that order (lower first, higher later)
+        foreach (var obj in ordered)
+        {
+            if (obj is UIElement uiE)
+            {
+                if (immediateElements.Contains(uiE))
+                    uiE.Update(cam);
+                uiE.Render(cam);
             }
-            else item.Render(camera ?? defaultCamera);
+            else if (obj is AdditionalRender ar)
+            {
+                ar.Render?.Invoke(cam);
+            }
         }
     }
+
 
     // Bring element to front
     public void BringToFront(UIElement element)
@@ -151,22 +189,60 @@ public class UIManager
 
     public UIElement? GetTopMostAt(Point point, bool eventOnly = false)
     {
-        // Walk through all elements managed by this UIManager
-        var elements = Elements;
-        for (int i = elements.Count - 1; i >= 0; i--)
-        {
-            var e = elements[i];
-            if (!e.IsVisible)
-                continue;
+        // Use the same ordering as Render(), but reversed (topmost → bottom)
+        var ordered = OrderElementsForRender(RootElements).Reverse();
 
-            if (e.ContainsPoint(point) && (!eventOnly || e.AcceptEvents))
+        var closed = new HashSet<UIElement>();
+
+        UIElement? Search(UIElement root)
+        {
+            // Search children first, starting from the topmost
+            foreach (var child in OrderElementsForRender(root.Children).Reverse())
             {
-                // First element from the top that contains point
-                return e;
+                var hit = Search(child);
+                if (hit != null)
+                    return hit;
             }
+
+            if (root.ContainsPoint(point))
+            {
+                // If no child matches, this root is the hit
+                return root;
+            }
+
+            closed.Add(root);
+
+            return null;
+        }
+
+        foreach (var e in ordered)
+        {
+            var res = Search(e);
+            if (res != null)
+                return res;
         }
 
         return null;
     }
+
+
     public void Clear() => elements.Clear();
+}
+
+public class AdditionalRender
+{
+    /// <summary>
+    /// Higher layers render on top of lower ones.
+    /// </summary>
+    public int RenderLayer { get; set; } = 0;
+
+    /// <summary>
+    /// Order within the same layer. Higher comes last.
+    /// </summary>
+    public int RenderOrder { get; set; } = 0;
+
+    /// <summary>
+    /// Action that contains render draw calls
+    /// </summary>
+    public Action<Camera2D> Render { get; set; }
 }

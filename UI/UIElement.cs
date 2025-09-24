@@ -46,6 +46,16 @@ public abstract class UIElement
     public bool IsEnabled = true;
     public bool AcceptEvents = true;
 
+    /// <summary>
+    /// Higher layers render on top of lower ones.
+    /// </summary>
+    public int RenderLayer { get; set; } = 0;
+
+    /// <summary>
+    /// Order within the same layer. Higher comes last.
+    /// </summary>
+    public int RenderOrder { get; set; } = 0;
+
     public virtual void Update(Camera2D camera) { }
     public abstract void Render(Camera2D camera);
 
@@ -58,6 +68,19 @@ public abstract class UIElement
         return EffectiveClipRect.Contains(point);
     }
 
+    public bool IsTopMostAt(Point point, bool eventOnly = false)
+    {
+        if (UIManager == null || !IsVisible)
+            return false;
+
+        if (!ContainsPoint(point) || (eventOnly && !AcceptEvents))
+            return false;
+
+        var top = UIManager.GetTopMostAt(point, eventOnly);
+        return top == this;
+    }
+
+    /*
     public bool IsTopMostAt(Point point, bool eventOnly = false)
     {
         if (UIManager == null || !IsVisible)
@@ -83,6 +106,7 @@ public abstract class UIElement
 
         return false;
     }
+    */
 
     public bool IsParentOf(UIElement element) => element.IsChildOf(this);
     public bool IsChildOf(UIElement element)

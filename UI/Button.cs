@@ -8,6 +8,7 @@ namespace Luxia.UI;
 public class Button : UIElement
 {
     public string Text = "";
+    public Vector2 TextOffset = Vector2.Zero;
     public SpriteFont Font;
     public Texture2D? Texture;
     public Color TextColor = Color.White;
@@ -19,7 +20,7 @@ public class Button : UIElement
 
     public Action OnClick;
 
-    private bool isHovered = false;
+    public bool IsHovered { get; private set; } = false;
     private bool isPressed = false;
 
     public Button()
@@ -31,11 +32,11 @@ public class Button : UIElement
     {
         var trueMouse = Input.MousePosition;
         Point mouse = IsWorldUI ? camera.ScreenToWorld(new(trueMouse.X, trueMouse.Y)).ToPoint() : trueMouse;
-        isHovered = EventPoint(mouse);
+        IsHovered = EventPoint(mouse);
 
         if (!IsEnabled || !IsVisible) return;
 
-        if (isHovered)
+        if (IsHovered)
         {
             isPressed = Input.IsMousePressed(MouseButton.Left);
 
@@ -54,10 +55,13 @@ public class Button : UIElement
 
         Color drawColor = NormalColor;
         if (isPressed) drawColor = PressedColor;
-        else if (isHovered) drawColor = HoverColor;
+        else if (IsHovered) drawColor = HoverColor;
 
         if (!IsEnabled)
             drawColor = NormalColor;
+
+        var trueMouse = Input.MousePosition;
+        Point mouse = IsWorldUI ? camera.ScreenToWorld(new(trueMouse.X, trueMouse.Y)).ToPoint() : trueMouse;
 
         // Draw background
         Application.SpriteBatch.Draw(Texture ?? UIManager.WhiteTexture, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y), drawColor);
@@ -66,7 +70,7 @@ public class Button : UIElement
         if (Font != null && !string.IsNullOrEmpty(Text))
         {
             Vector2 textSize = Font.MeasureString(Text) * TextScale;
-            Vector2 textPos = Position + (Size - textSize) / 2;
+            Vector2 textPos = Position + TextOffset + (Size - textSize) / 2;
             Application.SpriteBatch.DrawString(Font, Text, textPos, TextMatchBackground ? drawColor : TextColor, 0f, Vector2.Zero, TextScale, SpriteEffects.None, 0f);
         }
     }

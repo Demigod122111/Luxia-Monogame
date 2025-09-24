@@ -6,7 +6,7 @@ namespace Luxia.UI.Layout;
 public abstract class Layout : UIElement
 {
     public Vector2 Padding = Vector2.Zero;
-    public float Spacing = 0f;
+    public Vector2 Spacing = Vector2.Zero;
 
     public override void Update(Camera2D camera)
     {

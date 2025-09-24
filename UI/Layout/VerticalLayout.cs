@@ -10,7 +10,7 @@ public class VerticalLayout : Layout
         foreach (var child in Children)
         {
             child.LocalPosition = new(Padding.X, currentY);
-            currentY += child.Size.Y + Spacing;
+            currentY += child.Size.Y + Spacing.Y;
         }
     }
 }

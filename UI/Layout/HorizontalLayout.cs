@@ -10,7 +10,7 @@ public class HorizontalLayout : Layout
         foreach (var child in Children)
         {
             child.LocalPosition = new(currentX, Padding.Y);
-            currentX += child.Size.X + Spacing;
+            currentX += child.Size.X + Spacing.X;
         }
     }
 }

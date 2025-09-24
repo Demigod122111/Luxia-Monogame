@@ -223,9 +223,20 @@ public abstract class Application : Game
                 EndDrawing();
 
             BeginDrawing(samplerState: SamplerState.PointClamp);
-            ActiveScene.UIRender();
-            ActiveScene.UIManager.Render(ActiveScene.Camera2D);
-            ActiveScene.RenderUI();
+            ActiveScene.UIManager.Render(ActiveScene.Camera2D, additionalRenders: new()
+            {
+                new()
+                {
+                    RenderLayer = -10,
+                    Render = cam => ActiveScene.UIRender()
+                },
+                
+                new()
+                {
+                    RenderLayer = 10,
+                    Render = cam => ActiveScene.RenderUI()
+                }
+            });
             EndDrawing();
 
             GraphicsDevice.SetRenderTarget(null);
