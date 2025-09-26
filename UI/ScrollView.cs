@@ -45,7 +45,18 @@ public class ScrollView : UIElement
         set => contentSize = value;
     } // size of scrollable content
     private Vector2 contentSize;
-    public Vector2 ScrollOffset; // current offset
+    public Vector2 ScrollOffset
+    {
+        get => scrollOffset;
+        set
+        {
+            if (value != scrollOffset)
+                OnScrollChanged?.Invoke(value);
+
+            scrollOffset = value;
+        }
+    }
+    Vector2 scrollOffset; // current offset
     private Vector2 velocity;    // momentum for elastic feel
 
     private bool isDragging = false;
@@ -54,6 +65,19 @@ public class ScrollView : UIElement
     // Elastic scroll settings
     private const float ElasticStrength = 0.25f;
     private const float Damping = 0.9f;
+
+    public Action<Vector2> OnScrollChanged;
+
+    public void TransferScrollFrom(ScrollView scrollView)
+    {
+        if (scrollView == null)
+            return;
+
+        this.ScrollOffset = scrollView.ScrollOffset;
+        this.velocity = scrollView.velocity;
+        this.lastMouse = scrollView.lastMouse;
+        this.isDragging = scrollView.isDragging;
+    }
 
     public ScrollView()
     {
@@ -134,12 +158,12 @@ public class ScrollView : UIElement
             int dy = mouse.Y - lastMouse.Y;
             if (HasVerticalScroll)
             {
-                ScrollOffset.Y -= dy;
+                ScrollOffset = new(ScrollOffset.X, ScrollOffset.Y - dy);
                 velocity.Y = dy; // momentum
             }
             if (HasHorizontalScroll)
             {
-                ScrollOffset.X -= dx;
+                ScrollOffset = new(ScrollOffset.X - dx, ScrollOffset.Y);
                 velocity.X = dx; // momentum
             }
             lastMouse = mouse;
@@ -157,37 +181,37 @@ public class ScrollView : UIElement
         float maxScrollY = Math.Max(0, ContentSize.Y - Size.Y);
         if (ScrollOffset.Y < 0)
         {
-            ScrollOffset.Y += (-ScrollOffset.Y) * ElasticStrength;
+            ScrollOffset = new(ScrollOffset.X, ScrollOffset.Y + (-ScrollOffset.Y) * ElasticStrength);
             velocity.Y = 0;
         }
         else if (ScrollOffset.Y > maxScrollY)
         {
             float overshoot = ScrollOffset.Y - maxScrollY;
-            ScrollOffset.Y -= overshoot * ElasticStrength;
+            ScrollOffset = new(ScrollOffset.X, ScrollOffset.Y - overshoot * ElasticStrength);
             velocity.Y = 0;
         }
 
         float maxScrollX = Math.Max(0, ContentSize.X - Size.X);
         if (ScrollOffset.X < 0)
         {
-            ScrollOffset.X += (-ScrollOffset.X) * ElasticStrength;
+            ScrollOffset = new(ScrollOffset.X + (-ScrollOffset.X) * ElasticStrength, ScrollOffset.Y);
             velocity.X = 0;
         }
         else if (ScrollOffset.X > maxScrollX)
         {
             float overshoot = ScrollOffset.X - maxScrollX;
-            ScrollOffset.X -= overshoot * ElasticStrength;
+            ScrollOffset = new(ScrollOffset.X - overshoot * ElasticStrength, ScrollOffset.Y);
             velocity.X = 0;
         }
 
         if (!HasHorizontalScroll)
         {
-            ScrollOffset.X = 0;
+            ScrollOffset = new(0, ScrollOffset.Y);
             velocity = new(0, velocity.Y);
         }
         if (!HasVerticalScroll)
         {
-            ScrollOffset.Y = 0;
+            ScrollOffset = new(ScrollOffset.X, 0);
             velocity = new(velocity.X, 0);
         }
 

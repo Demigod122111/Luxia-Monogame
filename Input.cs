@@ -153,6 +153,15 @@ public static class Input
     public static bool IsMousePressed(MouseButton button) => GetButtonState(button, mouseState) == ButtonState.Pressed;
     public static bool IsMouseReleased(MouseButton button) => GetButtonState(button, mouseState) == ButtonState.Released;
     public static bool GetMouseClicked(MouseButton button=MouseButton.Left) => GetButtonState(button, mouseState) == ButtonState.Released && lastMouseState.HasValue && GetButtonState(button, lastMouseState.Value) == ButtonState.Pressed;
+    public static bool GetMouseDown(MouseButton button = MouseButton.Left) =>
+    GetButtonState(button, mouseState) == ButtonState.Pressed &&
+    lastMouseState.HasValue &&
+    GetButtonState(button, lastMouseState.Value) == ButtonState.Released;
+
+    public static bool GetMouseUp(MouseButton button = MouseButton.Left) =>
+        GetButtonState(button, mouseState) == ButtonState.Released &&
+        lastMouseState.HasValue &&
+        GetButtonState(button, lastMouseState.Value) == ButtonState.Pressed;
 
 
     private static ButtonState GetButtonState(MouseButton button, MouseState state) => button switch { MouseButton.Left => state.LeftButton, MouseButton.Right => state.RightButton, MouseButton.Middle => state.MiddleButton, _ => default };

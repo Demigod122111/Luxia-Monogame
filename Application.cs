@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using Luxia.UI;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
@@ -44,6 +45,8 @@ public abstract class Application : Game
     private int virtualHeight;
 
     private static RenderTarget2D renderTarget;
+
+    private static readonly Queue<Tuple<string, int?, int?>> screenshotRequests = new();
 
     /// <summary>
     /// Gets the width, in pixels, of the virtual rendering surface.
@@ -246,6 +249,12 @@ public abstract class Application : Game
             SpriteBatch.Begin(samplerState: SamplerState.LinearClamp);
             SpriteBatch.Draw(renderTarget, ClientBounds, Color.White);
             SpriteBatch.End();
+
+            while (screenshotRequests.Count > 0)
+            {
+                var item = screenshotRequests.Dequeue();
+                _takeScreenShot(item.Item1, item.Item2, item.Item3);
+            }
         }
 
         base.Draw(gameTime);
@@ -256,6 +265,18 @@ public abstract class Application : Game
         base.UnloadContent();
 
         Content.Unload();
+    }
+
+    public static void TakeScreenShot(string path, int? customWidth = null, int? customHeight = null)
+    {
+        screenshotRequests.Enqueue(new(path, customWidth, customHeight));
+    }
+
+    static void _takeScreenShot(string path, int? customWidth = null, int? customHeight = null)
+    {
+        var stream = File.Open(path, FileMode.OpenOrCreate);
+        renderTarget.SaveAsPng(stream, customWidth ?? renderTarget.Width, customHeight ?? renderTarget.Height);
+        stream.Close();
     }
 
     public static T Load<T>(string assetName) where T : class

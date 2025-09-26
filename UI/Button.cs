@@ -19,9 +19,15 @@ public class Button : UIElement
     public bool TextMatchBackground = false;
 
     public Action OnClick;
+    public Action OnHoverStart;
+    public Action OnHoverStay;
+    public Action OnHoverEnd;
 
     public bool IsHovered { get; private set; } = false;
-    private bool isPressed = false;
+    private bool wasHovered = false;
+
+    private bool isPressed = false;       // visual pressed state
+    private bool pressStartedHere = false; // ensures click belongs to this button
 
     public Button()
     {
@@ -31,17 +37,51 @@ public class Button : UIElement
     public override void Update(Camera2D camera)
     {
         var trueMouse = Input.MousePosition;
-        Point mouse = IsWorldUI ? camera.ScreenToWorld(new(trueMouse.X, trueMouse.Y)).ToPoint() : trueMouse;
-        IsHovered = EventPoint(mouse);
+        Point mouse = IsWorldUI
+            ? camera.ScreenToWorld(new(trueMouse.X, trueMouse.Y)).ToPoint()
+            : trueMouse;
 
-        if (!IsEnabled || !IsVisible) return;
+        bool hoverNow = EventPoint(mouse);
 
-        if (IsHovered)
+        if (!IsEnabled || !IsVisible)
         {
-            isPressed = Input.IsMousePressed(MouseButton.Left);
+            IsHovered = false;
+            wasHovered = false;
+            pressStartedHere = false;
+            return;
+        }
 
-            if (Input.GetMouseClicked(MouseButton.Left))
+        // Hover events
+        if (hoverNow && !wasHovered)
+            OnHoverStart?.Invoke();
+        if (hoverNow)
+            OnHoverStay?.Invoke();
+        if (!hoverNow && wasHovered)
+            OnHoverEnd?.Invoke();
+
+        IsHovered = hoverNow;
+        wasHovered = hoverNow;
+
+        // --- Mouse press handling ---
+        if (Input.GetMouseDown(MouseButton.Left))
+        {
+            if (IsHovered)
+            {
+                pressStartedHere = true;
+                isPressed = true;
+            }
+        }
+        else if (Input.IsMousePressed(MouseButton.Left)) // held
+        {
+            isPressed = pressStartedHere && IsHovered;
+        }
+        else if (Input.GetMouseUp(MouseButton.Left))
+        {
+            if (pressStartedHere && IsHovered)
                 OnClick?.Invoke();
+
+            pressStartedHere = false;
+            isPressed = false;
         }
         else
         {
@@ -60,18 +100,29 @@ public class Button : UIElement
         if (!IsEnabled)
             drawColor = NormalColor;
 
-        var trueMouse = Input.MousePosition;
-        Point mouse = IsWorldUI ? camera.ScreenToWorld(new(trueMouse.X, trueMouse.Y)).ToPoint() : trueMouse;
-
         // Draw background
-        Application.SpriteBatch.Draw(Texture ?? UIManager.WhiteTexture, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y), drawColor);
+        Application.SpriteBatch.Draw(
+            Texture ?? UIManager.WhiteTexture,
+            new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y),
+            drawColor
+        );
 
         // Draw text centered
         if (Font != null && !string.IsNullOrEmpty(Text))
         {
             Vector2 textSize = Font.MeasureString(Text) * TextScale;
             Vector2 textPos = Position + TextOffset + (Size - textSize) / 2;
-            Application.SpriteBatch.DrawString(Font, Text, textPos, TextMatchBackground ? drawColor : TextColor, 0f, Vector2.Zero, TextScale, SpriteEffects.None, 0f);
+            Application.SpriteBatch.DrawString(
+                Font,
+                Text,
+                textPos,
+                TextMatchBackground ? drawColor : TextColor,
+                0f,
+                Vector2.Zero,
+                TextScale,
+                SpriteEffects.None,
+                0f
+            );
         }
     }
 }

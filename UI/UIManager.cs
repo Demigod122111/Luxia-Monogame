@@ -3,7 +3,6 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Xml.Linq;
 
 namespace Luxia.UI;
 
@@ -12,6 +11,8 @@ public class UIManager
     public static Texture2D WhiteTexture { get; set; }
 
     private readonly List<UIElement> elements = new();
+    private readonly Dictionary<string, UIElement> frameElements = new();
+
     internal IReadOnlyList<UIElement> RootElements
     {
         get
@@ -80,14 +81,30 @@ public class UIManager
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public void FrameElement<T>(Action<T> setup) where T: UIElement, new()
+    public void FrameElement<T>(Action<T> setup, string? key=null, bool render=true) where T: UIElement, new()
     {
-        T element = new();
+        T element = key != null && frameElements.ContainsKey(key) && frameElements[key] is T fe ? fe : new();
 
         setup?.Invoke(element);
         element.UIManager = this;
 
-        immediateElementsToRender.Enqueue(element);
+        if (render)
+            immediateElementsToRender.Enqueue(element);
+
+        if (key != null)
+            frameElements[key] = element;
+    }
+
+    /// <summary>
+    /// Clears Immediate UI Element Cache
+    /// </summary>
+    /// <returns></returns>
+    public void ClearFrameElementCache(params string[] keys)
+    {
+        if (keys.Length == 0)
+            frameElements.Clear();
+        else foreach (var key in keys)
+            frameElements.Remove(key);
     }
 
     public void AddElement(UIElement element)

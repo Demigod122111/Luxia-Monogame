@@ -10,6 +10,7 @@ public class Camera2D
     public float Zoom { get; set; } = 1f;
 
     private readonly Viewport _viewport;
+    public Viewport Viewport => _viewport;
 
     public Camera2D(Viewport viewport)
     {

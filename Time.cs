@@ -13,7 +13,8 @@ public static class Time
     public static float ScaledDeltaTime => DeltaTime * TimeScale;
     public static bool IsPaused => TimeScale == 0f;
 
-    public static int FPS => currentFps ?? (int)(1f / DeltaTime);
+    public static int FPS => currentFps ?? RawFPS;
+    public static int RawFPS => (int)(1f / DeltaTime);
 
     private static float fpsTimer = 0f;
     private static int fpsFrames = 0;

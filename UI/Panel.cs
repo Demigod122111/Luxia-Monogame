@@ -8,7 +8,7 @@ public class Panel : UIElement
 {
     public Color BackgroundColor = Color.Gray * 0.5f;
     public Texture2D? Texture;
-    public List<UIElement> Children { get; } = new();
+    public Vector2 Origin = Vector2.Zero;
 
     public override void Update(Camera2D camera)
     {
@@ -17,21 +17,11 @@ public class Panel : UIElement
             child.Update(camera);
     }
 
-    public void AddChild(UIElement child)
-    {
-        Children.Add(child);
-    }
-
-    public void RemoveChild(UIElement child)
-    {
-        Children.Remove(child);
-    }
-
     public override void Render(Camera2D camera)
     {
         if (!IsVisible) return;
 
-        Application.SpriteBatch.Draw(Texture ?? UIManager.WhiteTexture, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y), BackgroundColor);
+        Application.SpriteBatch.Draw(Texture ?? UIManager.WhiteTexture, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y), null, BackgroundColor, 0f, Origin, SpriteEffects.None, 0f);
 
         foreach (var child in Children)
             child.Render(camera);

@@ -5,7 +5,25 @@ namespace Luxia.UI;
 
 public abstract class UIElement
 {
-    internal UIManager? UIManager;
+    internal UIManager? UIManager
+    {
+        get 
+        {
+            if (uIManager == null && AutoFallbackUIManager)
+            {
+                var parent = Parent;
+                if (parent != null)
+                    uIManager = parent.UIManager;
+                uIManager ??= Application.ActiveScene?.UIManager;
+            }
+            return uIManager;
+        }
+
+        set => uIManager = value;
+    }
+
+    private UIManager? uIManager;
+    public bool AutoFallbackUIManager { get; set; } = true;
 
     public UIElement Parent { get; private set; }
     public List<UIElement> Children { get; } = new();
@@ -124,13 +142,19 @@ public abstract class UIElement
     }
 
     public bool EventPoint(Point point) => ContainsPoint(point) && IsTopMostAt(point, true);
-    public bool EventPassthroughPoint(Point point) => ContainsPoint(point) && (IsTopMostAt(point, false) || (UIManager.GetTopMostAt(point, false)?.IsChildOf(this) ?? true));
+    public bool EventPassthroughPoint(Point point) => ContainsPoint(point) && (IsTopMostAt(point, false) || (UIManager?.GetTopMostAt(point, false)?.IsChildOf(this) ?? true));
 
     public void AddChild(UIElement child)
     {
+        if (child.Parent != null && child.Parent != this)
+            child.Parent.RemoveChild(child);
+
         child.UIManager = UIManager;
+
         child.Parent = this;
-        Children.Add(child);
+
+        if (!Children.Contains(child))
+            Children.Add(child);
     }
 
     public void RemoveChild(UIElement child)
@@ -144,6 +168,15 @@ public abstract class UIElement
         if (child.Parent == this)
             child.Parent = null;
     }
+
+    public void ClearChildren()
+    {
+        for (int i = Children.Count - 1; i >= 0; i--)
+        {
+            RemoveChild(Children[i]);
+        }
+    }
+
     public List<UIElement> GetDescendants()
     {
         var elements = new List<UIElement>();

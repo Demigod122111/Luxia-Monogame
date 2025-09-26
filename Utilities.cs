@@ -1,4 +1,6 @@
 ﻿
+using System;
+using System.Diagnostics;
 using System.Globalization;
 
 namespace Luxia;
@@ -36,4 +38,31 @@ public static class Utilities
 
     public static string Beautify(this double value) =>
         value.ToString("N0", CultureInfo.InvariantCulture);
+
+    public static void OpenInExplorer(this string path, bool debug = false)
+    {
+        try
+        {
+            // Normalize path for cross-platform compatibility
+            path = path.Replace("\\", "/");
+
+            if (OperatingSystem.IsWindows())
+            {
+                Process.Start("explorer", path);
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                Process.Start("xdg-open", path);
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                Process.Start("open", path);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (debug)
+                Console.WriteLine($"Error opening path: {ex.Message}");
+        }
+    }
 }
